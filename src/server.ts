@@ -1,3 +1,4 @@
+require('dotenv').config();
 import express, { Request, Response } from 'express';
 import puppeteer from 'puppeteer';
 
@@ -7,7 +8,12 @@ const port = 5000;
 // Puppeteer function to fetch and parse Examine data
 async function fetchExamineData(query: string): Promise<object> {
   try {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      executablePath:
+        process.env.NODE_ENV === "production"
+          ? process.env.PUPPETEER_EXECUTABLE_PATH
+          : puppeteer.executablePath(),
+    });
     const page = await browser.newPage();
 
     const url = `https://examine.com/supplements/${query.toLowerCase()}/`;
