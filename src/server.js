@@ -16,7 +16,7 @@ const express_1 = __importDefault(require("express"));
 const puppeteer_1 = __importDefault(require("puppeteer"));
 const app = (0, express_1.default)();
 const port = 5000;
-// Puppeteer function to fetch Examine data
+// Puppeteer function to fetch and parse Examine data
 function fetchExamineData(query) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -29,13 +29,30 @@ function fetchExamineData(query) {
             if (pageTitle === '404') {
                 throw new Error(`No data found for the query: "${query}".`);
             }
-            const description = yield page.$eval('.overview', (el) => { var _a; return ((_a = el.textContent) === null || _a === void 0 ? void 0 : _a.trim()) || 'No description available.'; });
-            const benefits = yield page.$$eval('.benefits-list li', (elements) => elements.map((el) => { var _a; return ((_a = el.textContent) === null || _a === void 0 ? void 0 : _a.trim()) || ''; }));
+            // Get the page HTML content
+            const html = yield page.content();
+            // Ensure HTML content is available
+            if (!html) {
+                throw new Error("Failed to retrieve HTML content from the page.");
+            }
+            // Use Puppeteer to find all elements with an id attribute
+            const elementsWithId = yield page.$$eval('[id]', (elements) => {
+                const result = {};
+                elements.forEach((element) => {
+                    var _a;
+                    const id = element.id; // Type assertion to HTMLElement
+                    const textContent = ((_a = element.textContent) === null || _a === void 0 ? void 0 : _a.trim()) || 'No text content available';
+                    if (id) {
+                        result[id] = textContent;
+                    }
+                });
+                return result;
+            });
             yield browser.close();
+            // Return the extracted data as key-value pairs
             return {
                 query,
-                description,
-                benefits: benefits.length > 0 ? benefits : ['No benefits listed.'],
+                elementsWithId
             };
         }
         catch (error) {
