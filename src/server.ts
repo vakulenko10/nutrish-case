@@ -1,6 +1,5 @@
 import express, { Request, Response } from 'express';
 import puppeteer from 'puppeteer';
-import cheerio from 'cheerio';
 
 const app = express();
 const port = 5000;
@@ -26,29 +25,35 @@ async function fetchExamineData(query: string): Promise<object> {
     // Get the page HTML content
     const html = await page.content();
 
-    // Debugging: Log the HTML content to check if it's loaded
-    console.log("HTML Content Loaded");
-
     // Ensure HTML content is available
     if (!html) {
       throw new Error("Failed to retrieve HTML content from the page.");
     }
 
-    // Use Cheerio to parse the HTML and extract the <main> tag content
-    const $ = cheerio.load(html);
-    const mainContent = $('main').html()?.trim() || 'No <main> content available';
+    // Use Puppeteer to find all elements with an id attribute
+    const elementsWithId = await page.$$eval('[id]', (elements: Element[]) => {
+      const result: { [key: string]: string } = {};
+      elements.forEach((element) => {
+        const id = (element as HTMLElement).id;  // Type assertion to HTMLElement
+        const textContent = element.textContent?.trim() || 'No text content available';
+        if (id) {
+          result[id] = textContent;
+        }
+      });
+      return result;
+    });
 
-    // Return the extracted <main> content
     await browser.close();
+
+    // Return the extracted data as key-value pairs
     return {
       query,
-      mainContent,
+      elementsWithId
     };
   } catch (error: any) {
     return { error: `An error occurred: ${error.message}` };
   }
 }
-
 
 // Define the route with the correct types
 app.get('/fetch', async (req: Request, res: Response) => {
