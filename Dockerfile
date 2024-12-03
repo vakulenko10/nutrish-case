@@ -3,6 +3,8 @@ FROM ghcr.io/puppeteer/puppeteer:23.9.0
 
 # Set the working directory inside the container
 WORKDIR /usr/src/app
+# Ensure Puppeteer uses the correct cache directory
+ENV PUPPETEER_CACHE_DIR=/usr/src/app/.cache/puppeteer
 
 ENV PUPPETEER_SKIP_DOWNLOAD=false
 # Copy package.json and package-lock.json first to leverage Docker caching
