@@ -7,7 +7,10 @@ const port = 5000;
 // Puppeteer function to fetch and parse Examine data
 async function fetchExamineData(query: string): Promise<object> {
   try {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
     const page = await browser.newPage();
 
     const url = `https://examine.com/supplements/${query.toLowerCase()}/`;
