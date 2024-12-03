@@ -1,33 +1,31 @@
-FROM node:18
+FROM ghcr.io/puppeteer/puppeteer:23.10.0
 
-# Install Puppeteer dependencies
-RUN apt-get update && apt-get install -y \
-  libnss3 \
-  libatk1.0-0 \
-  libatk-bridge2.0-0 \
-  libcups2 \
-  libdrm2 \
-  libxdamage1 \
-  libxrandr2 \
-  xdg-utils \
-  fonts-liberation \
-  libasound2 \
-  libgbm-dev \
-  --no-install-recommends
+# Set working directory
+WORKDIR /app
 
-# Install Puppeteer
-RUN npm install puppeteer
+# Copy package.json and package-lock.json
+COPY package*.json ./
 
-# Set the working directory
-WORKDIR /usr/src/app
+# Set file ownership to pptruser
+USER root
+RUN chown -R pptruser:pptruser /app
 
-# Copy project files
-COPY . .
+# Switch to non-root user
+USER pptruser
 
-# Install project dependencies
+# Install Node.js dependencies
 RUN npm install
 
-# Expose port
+# Copy the rest of the application code
+COPY --chown=pptruser:pptruser . .
+
+# Compile TypeScript to JavaScript
+RUN npm run build
+
+# Puppeteer setup: Skip Chromium download
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
+# Expose the application port
 EXPOSE 5000
 
 # Start the application

@@ -1,4 +1,3 @@
-require('dotenv').config();
 import express, { Request, Response } from 'express';
 import puppeteer from 'puppeteer';
 
@@ -9,7 +8,8 @@ const port = 5000;
 async function fetchExamineData(query: string): Promise<object> {
   try {
     const browser = await puppeteer.launch({
-      headless: true, // Optional: For improved headless mode
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
     const page = await browser.newPage();
 
