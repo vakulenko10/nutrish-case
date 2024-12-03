@@ -1,26 +1,34 @@
-# Use a Puppeteer-friendly base image with Chromium pre-installed
-FROM ghcr.io/puppeteer/puppeteer:23.9.0
+FROM node:18
 
-# Set the working directory inside the container
+# Install Puppeteer dependencies
+RUN apt-get update && apt-get install -y \
+  libnss3 \
+  libatk1.0-0 \
+  libatk-bridge2.0-0 \
+  libcups2 \
+  libdrm2 \
+  libxdamage1 \
+  libxrandr2 \
+  xdg-utils \
+  fonts-liberation \
+  libasound2 \
+  libgbm-dev \
+  --no-install-recommends
+
+# Install Puppeteer
+RUN npm install puppeteer
+
+# Set the working directory
 WORKDIR /usr/src/app
-# Ensure Puppeteer uses the correct cache directory
-ENV PUPPETEER_CACHE_DIR=/usr/src/app/.cache/puppeteer
 
-ENV PUPPETEER_SKIP_DOWNLOAD=false
-# Copy package.json and package-lock.json first to leverage Docker caching
-COPY package*.json ./
-
-# Install dependencies (production only for smaller image size)
-RUN npm ci --omit=dev
-
-# Copy the rest of the application code to the container
+# Copy project files
 COPY . .
 
-# Build the TypeScript files
-RUN npm run build
+# Install project dependencies
+RUN npm install
 
-# Expose the port the app runs on
-EXPOSE 3000
+# Expose port
+EXPOSE 5000
 
 # Start the application
 CMD ["npm", "start"]
