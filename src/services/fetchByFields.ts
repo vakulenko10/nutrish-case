@@ -7,36 +7,41 @@ export async function fetchOptimizedData(
   ): Promise<object> {
     const url = `https://examine.com/supplements/${query.toLowerCase()}/`;
   
+    let browser = null;
     try {
-    const browser = await getBrowser();
-    const page = await browser.newPage();
+        const browser = await getBrowser();
+        const page = await browser.newPage();
   
       await page.setUserAgent(
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       );
-  
-      // Block unnecessary resources
+      await page.setViewport({ width: 800, height: 600 });
+      await page.setCacheEnabled(true); // Enable caching
       await page.setRequestInterception(true);
       page.on('request', (request) => {
-        const resourceType = request.resourceType();
-        if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+        const resourceType = request.resourceType(); 
+        const url = request.url();
+
+        const blockedDomains = ['google-analytics.com', 'facebook.com', 'doubleclick.net', 'ads'];
+
+        if (
+          ['image', 'stylesheet', 'font', 'media', 'script'].includes(resourceType) ||
+          blockedDomains.some((domain) => url.includes(domain))
+        ){
           request.abort();
         } else {
           request.continue();
         }
       });
   
-      // Navigate to the page
       console.log(`Navigating to URL: ${url}`);
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
   
-      // Check for 404 or missing content
       const pageTitle = await page.title();
       if (pageTitle === '404') {
         throw new Error(`No data found for the query: "${query}".`);
       }
   
-      // Extract only the relevant sections based on `fields`
       let extractedData: { [key: string]: string } = {};
       if (fields) {
         for (const field of fields) {
@@ -51,7 +56,6 @@ export async function fetchOptimizedData(
           }
         }
       } else {
-        // Extract all sections if no `fields` specified
         extractedData = await page.$$eval('[id]', (elements: Element[]) => {
           const result: { [key: string]: string } = {};
           elements.forEach((element) => {
@@ -65,9 +69,7 @@ export async function fetchOptimizedData(
         });
       }
   
-      // Apply `summary` and `maxResults` options
       if (summary) {
-        // Summarize content by truncating to the first 200 characters for each field
         for (const key in extractedData) {
           extractedData[key] = extractedData[key].substring(0, 200) + '...';
         }
@@ -83,8 +85,6 @@ export async function fetchOptimizedData(
         extractedData = limitedData;
       }
   
-      await browser.close();
-  
       return {
         query,
         extractedData,
@@ -92,6 +92,9 @@ export async function fetchOptimizedData(
     } catch (error: any) {
       console.error(`Error while fetching data: ${error.message}`);
       return { error: `An error occurred: ${error.message}` };
+    } finally {
+      if (browser) {
+        await browser.close();
+      }
     }
   }
-  
