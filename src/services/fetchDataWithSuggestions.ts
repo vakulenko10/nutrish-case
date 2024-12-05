@@ -1,6 +1,24 @@
-import { Browser } from 'puppeteer-core';
+import puppeteer, { Browser } from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import { getBrowser } from '../config/puppeteerConfig';
+function sanitizeFields(fields?: string | string[]): string[] {
+  if (!fields) return [];
+  
+  // Convert string to array if necessary
+  const fieldsArray = Array.isArray(fields) ? fields : fields.split(',');
 
+  // Sanitize each field
+  return Array.from(
+      new Set(
+          fieldsArray.map(field =>
+              field
+                  .trim() // Remove unnecessary spaces
+                  .toLowerCase() // Convert to lowercase for consistency
+                  .replace(/[^a-z0-9_]/g, '') // Remove invalid characters
+          )
+      )
+  ).filter(Boolean); // Remove empty strings
+}
 // Function to fetch data from Examine.com with suggestions if no direct match is found
 export async function fetchDataWithSuggestions(
   query: string, // The name of the supplement to search for (e.g., "vitamin-c"). It should match or be similar to supplement names listed on Examine.com.
@@ -14,7 +32,8 @@ export async function fetchDataWithSuggestions(
 
   // Validate and sanitize the query (e.g., convert spaces to hyphens for valid URLs)
   const sanitizedQuery = query.trim().toLowerCase().replace(/\s+/g, '-');
-
+  const sanitizedFields = sanitizeFields(fields);
+        console.log(`Sanitized fields: ${sanitizedFields.join(', ')}`);
   // URLs for the supplement page and the search page
   const url = `https://examine.com/supplements/${sanitizedQuery}/`;
   const searchUrl = `https://examine.com/search/?q=${encodeURIComponent(sanitizedQuery)}`;
@@ -22,7 +41,13 @@ export async function fetchDataWithSuggestions(
   let browser = null;
   try {
     // Get a Puppeteer browser instance
-    const browser = await getBrowser();
+    // const browser = await getBrowser();
+    const browser = await puppeteer.launch({
+      args: chromium.args, // Browser launch arguments optimized for headless Chromium
+      defaultViewport: chromium.defaultViewport, // Set the default viewport (width/height) for pages
+      executablePath: await chromium.executablePath(), // Get the path to the Chromium executable
+      headless: chromium.headless, // Launch the browser in headless mode (no GUI)
+    });
     const page = await browser.newPage();
 
     // Set a custom user agent to mimic a real browser
@@ -63,7 +88,7 @@ export async function fetchDataWithSuggestions(
     const extractedData: { [key: string]: string[] } = {};
 
     // Search terms to look for in the page content
-    const searchTerms = fields && fields.length > 0 ? [...fields, query] : [query];
+    const searchTerms = sanitizedFields && sanitizedFields.length > 0 ? [...sanitizedFields, query] : [query];
 
     // Loop through each search term and extract relevant data
     for (const term of searchTerms) {
@@ -145,7 +170,9 @@ export async function fetchDataWithSuggestions(
         suggestions: suggestions.slice(0, maxResults || 5),
       };
     }
-
+    const pages = await (browser as Browser).pages();
+    console.log("pages",JSON.stringify(pages))
+    console.log("type of pages:",typeof(pages))
     // Return extracted data if relevant data was found
     return {
       query: sanitizedQuery.replace(/-/g, ' '), // Convert query back to human-readable format
@@ -156,8 +183,15 @@ export async function fetchDataWithSuggestions(
     return { error: `An error occurred: ${error.message}` };
   } finally {
     if (browser) {
-      // Ensure the browser instance is closed
-      (await browser as Browser).close();
+      console.log('Attempting to close the browser...');
+      try {
+        await (browser as Browser).close();
+        console.log('Browser closed successfully.');
+      } catch (error) {
+        console.error('Error while closing the browser:', error);
+      }
+    } else {
+      console.log('Browser was not initialized or already closed.');
     }
   }
 }

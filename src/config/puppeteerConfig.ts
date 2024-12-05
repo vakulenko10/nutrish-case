@@ -28,6 +28,15 @@ export async function getBrowser(): Promise<Browser> {
       // Optionally rethrow the error or handle it as needed
       throw new Error('Failed to launch the browser');
     }
+  }else{
+    console.log('clearing inside the else block')
+    try {
+      const pages = await browser.pages();
+      await Promise.all(pages.map((page) => page.close())).then(()=>console.log('successfully closed'));
+      console.log('Pages closed.');
+  } catch (pageError) {
+      console.error('Error while closing pages:', pageError);
+  } 
   }
 
   // Return the browser instance
