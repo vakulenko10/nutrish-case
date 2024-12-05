@@ -73,6 +73,40 @@ GET http://localhost:5000/fetch-dynamically?query=vitamin-c&fields=benefits,dosa
 
 **Description**: Check if the app is running
 
+## Approach
+
+### Web Scraping with Puppeteer
+- Scraped data from [Examine.com](https://examine.com) dynamically based on the query.
+- Used request interception to optimize performance by blocking unnecessary resources like ads and images.
+
+### Dynamic Query Handling
+- Validated and sanitized user queries to avoid errors.
+- Suggested related supplements if no exact match was found.
+
+### Error Handling and Summaries
+- Implemented robust error handling to handle missing data gracefully.
+- Added a summary feature for concise data representation.
+
+### Deployment Ready
+- Dockerized the application for portability and ease of deployment.
+
+## Challenges Faced
+
+### 1. Dynamic Content Handling
+Examine.com pages contain dynamically loaded content. To address this, the scraping logic used `waitUntil: 'domcontentloaded'` to ensure the page was fully loaded before extracting data.
+
+### 2. Query Validation
+Queries with spaces or special characters caused issues. This was resolved by sanitizing queries to replace spaces with hyphens and encoding them correctly.
+
+### 3. Blocking Unnecessary Requests
+Scraping efficiency was initially slow due to heavy resource loading. Request interception was implemented to block irrelevant resources like images, fonts, and ads.
+
+### 4. Data Duplication
+Extracted data often had redundant entries. This was resolved by using a `Set` to ensure uniqueness in the response.
+
+### 5. Error Messaging
+Informative error messages were added to guide users when no data was found or input was invalid.
+
 ## Technologies Used
 
 <p align="center">
