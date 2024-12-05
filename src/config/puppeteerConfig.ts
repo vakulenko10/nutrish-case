@@ -32,7 +32,7 @@ export async function getBrowser(): Promise<Browser> {
     console.log('clearing inside the else block')
     try {
       const pages = await browser.pages();
-      await Promise.all(pages.map((page) => page.close())).then(()=>console.log('successfully closed'));
+      await Promise.all(pages.map((page) => page.close()));
       console.log('Pages closed.');
   } catch (pageError) {
       console.error('Error while closing pages:', pageError);
