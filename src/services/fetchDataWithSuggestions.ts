@@ -6,8 +6,12 @@ export async function fetchDataWithSuggestions(
   summary?: boolean,
   maxResults?: number
 ): Promise<object> {
-  const url = `https://examine.com/supplements/${query.toLowerCase()}/`;
-  const searchUrl = `https://examine.com/search/?q=${encodeURIComponent(query)}`;
+  // Validate and sanitize the query
+  const sanitizedQuery = query.trim().toLowerCase().replace(/\s+/g, '-');
+
+  // Updated URLs with the sanitized query
+  const url = `https://examine.com/supplements/${sanitizedQuery}/`;
+  const searchUrl = `https://examine.com/search/?q=${encodeURIComponent(sanitizedQuery)}`;
 
   let browser = null;
   try {
@@ -42,11 +46,11 @@ export async function fetchDataWithSuggestions(
 
     const pageTitle = await page.title();
     if (pageTitle === '404') {
-      throw new Error(`No data found for the query: "${query}".`);
+      throw new Error(`No data found for the query: "${sanitizedQuery}".`);
     }
 
     const extractedData: { [key: string]: string[] } = {};
-    const searchTerms = fields && fields.length > 0 ? [...fields, query] : [query];
+    const searchTerms = fields && fields.length > 0 ? [...fields, query] : [ query];
 
     for (const term of searchTerms) {
       console.log(`Searching for term: ${term}`);
@@ -120,14 +124,14 @@ export async function fetchDataWithSuggestions(
         .catch(() => []);
 
       return {
-        query,
-        error: `No direct data found for the query: "${query}".`,
+        query: sanitizedQuery.replace(/-/g, ' '), // Return human-readable query
+        error: `No direct data found for the query: "${sanitizedQuery.replace(/-/g, ' ')}".`,
         suggestions: suggestions.slice(0, maxResults || 5),
       };
     }
 
     return {
-      query,
+      query: sanitizedQuery.replace(/-/g, ' '), // Return human-readable query
       extractedData,
     };
   } catch (error: any) {
