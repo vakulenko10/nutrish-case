@@ -1,60 +1,71 @@
 import { Browser } from 'puppeteer-core';
 import { getBrowser } from '../config/puppeteerConfig';
 
+// Function to fetch data from Examine.com with suggestions if no direct match is found
 export async function fetchDataWithSuggestions(
-  query: string,
-  fields?: string[],
-  summary?: boolean,
-  maxResults?: number
+  query: string, // The name of the supplement to search for (e.g., "vitamin-c"). It should match or be similar to supplement names listed on Examine.com.
+  fields?: string[], // An optional array of keywords or fields (e.g., "benefits", "dosage") to extract specific sections of information from the page.
+  summary?: boolean, // A boolean flag indicating whether the returned data should be truncated to shorter snippets for concise output. Default is `false`.
+  maxResults?: number // An optional parameter to limit the number of results returned in the response (e.g., "5" to return the top 5 matches).
 ): Promise<object> {
 
-  console.log('entering the fetchDataWithSuggestion function')
-  // Validate and sanitize the query sda sdss
+  // Log entry into the function
+  console.log('Entering the fetchDataWithSuggestions function');
+
+  // Validate and sanitize the query (e.g., convert spaces to hyphens for valid URLs)
   const sanitizedQuery = query.trim().toLowerCase().replace(/\s+/g, '-');
 
-  // Updated URLs with the sanitized query
+  // URLs for the supplement page and the search page
   const url = `https://examine.com/supplements/${sanitizedQuery}/`;
   const searchUrl = `https://examine.com/search/?q=${encodeURIComponent(sanitizedQuery)}`;
 
   let browser = null;
   try {
+    // Get a Puppeteer browser instance
     const browser = await getBrowser();
     const page = await browser.newPage();
 
+    // Set a custom user agent to mimic a real browser
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     );
     await page.setViewport({ width: 800, height: 600 });
     await page.setCacheEnabled(true);
-    await page.setRequestInterception(true);
 
+    // Intercept requests to block unnecessary resources (e.g., ads, analytics)
+    await page.setRequestInterception(true);
     page.on('request', (request) => {
       const resourceType = request.resourceType();
       const url = request.url();
 
       const blockedDomains = ['google-analytics.com', 'facebook.com', 'doubleclick.net', 'ads'];
-
       if (
         ['image', 'stylesheet', 'font', 'media', 'script'].includes(resourceType) ||
         blockedDomains.some((domain) => url.includes(domain))
       ) {
-        request.abort();
+        request.abort(); // Block unnecessary requests
       } else {
         request.continue();
       }
     });
 
+    // Navigate to the supplement page
     console.log(`Navigating to URL: ${url}`);
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
+    // Check if the page is valid (404 indicates no data for the query)
     const pageTitle = await page.title();
     if (pageTitle === '404') {
       throw new Error(`No data found for the query: "${sanitizedQuery}".`);
     }
 
+    // Data structure to store extracted data
     const extractedData: { [key: string]: string[] } = {};
-    const searchTerms = fields && fields.length > 0 ? [...fields, query] : [ query];
 
+    // Search terms to look for in the page content
+    const searchTerms = fields && fields.length > 0 ? [...fields, query] : [query];
+
+    // Loop through each search term and extract relevant data
     for (const term of searchTerms) {
       console.log(`Searching for term: ${term}`);
 
@@ -63,7 +74,7 @@ export async function fetchDataWithSuggestions(
           const bodyText = document.body.innerText.toLowerCase();
           const matches: string[] = [];
 
-          // Find matching text in the body content
+          // Use regex to find text around the search term
           const regex = new RegExp(`.{0,200}${term.toLowerCase()}.{0,200}`, 'gi');
           const foundMatches = bodyText.match(regex);
 
@@ -71,7 +82,7 @@ export async function fetchDataWithSuggestions(
             foundMatches.forEach((match) => matches.push(match.trim()));
           }
 
-          // Check elements with matching IDs
+          // Check for IDs containing the search term
           document.querySelectorAll('[id]').forEach((element) => {
             const id = element.id.toLowerCase();
             if (id.includes(term.toLowerCase())) {
@@ -87,31 +98,32 @@ export async function fetchDataWithSuggestions(
       if (matchingContent.length > 0) {
         if (!extractedData[term]) extractedData[term] = [];
         const uniqueItems = new Set([...extractedData[term], ...matchingContent]);
-        extractedData[term] = Array.from(uniqueItems);
+        extractedData[term] = Array.from(uniqueItems); // Ensure no duplicates
       } else {
         extractedData[term] = ['No matches found'];
       }
     }
 
-    // Optional: Summarize the data
+    // Optional: Summarize the data if the summary flag is true
     if (summary) {
       for (const key in extractedData) {
         extractedData[key] = extractedData[key].map((item) => item.substring(0, 200) + '...');
       }
     }
 
-    // Limit results if maxResults is specified
+    // Limit the results if maxResults is specified
     if (maxResults) {
       Object.keys(extractedData).forEach((key) => {
         extractedData[key] = extractedData[key].slice(0, maxResults);
       });
     }
 
-    // If no data is found, search for suggestions
+    // Check if any relevant data was found
     const hasRelevantData = Object.values(extractedData).some(
       (items) => items.length > 0 && items[0] !== 'No matches found'
     );
 
+    // If no relevant data, search for suggestions
     if (!hasRelevantData) {
       console.log('No relevant data found on the supplement page. Searching for suggestions...');
       await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -126,15 +138,17 @@ export async function fetchDataWithSuggestions(
         })
         .catch(() => []);
 
+      // Return suggestions if no direct data is found
       return {
-        query: sanitizedQuery.replace(/-/g, ' '), // Return human-readable query
+        query: sanitizedQuery.replace(/-/g, ' '), // Convert query back to human-readable format
         error: `No direct data found for the query: "${sanitizedQuery.replace(/-/g, ' ')}".`,
         suggestions: suggestions.slice(0, maxResults || 5),
       };
     }
 
+    // Return extracted data if relevant data was found
     return {
-      query: sanitizedQuery.replace(/-/g, ' '), // Return human-readable query
+      query: sanitizedQuery.replace(/-/g, ' '), // Convert query back to human-readable format
       extractedData,
     };
   } catch (error: any) {
@@ -142,6 +156,7 @@ export async function fetchDataWithSuggestions(
     return { error: `An error occurred: ${error.message}` };
   } finally {
     if (browser) {
+      // Ensure the browser instance is closed
       (await browser as Browser).close();
     }
   }
