@@ -1,3 +1,4 @@
+import { Browser } from 'puppeteer-core';
 import { getBrowser } from '../config/puppeteerConfig';
 
 export async function fetchDataWithSuggestions(
@@ -6,7 +7,9 @@ export async function fetchDataWithSuggestions(
   summary?: boolean,
   maxResults?: number
 ): Promise<object> {
-  // Validate and sanitize the query
+
+  console.log('entering the fetchDataWithSuggestion function')
+  // Validate and sanitize the query sda sdss
   const sanitizedQuery = query.trim().toLowerCase().replace(/\s+/g, '-');
 
   // Updated URLs with the sanitized query
@@ -139,7 +142,7 @@ export async function fetchDataWithSuggestions(
     return { error: `An error occurred: ${error.message}` };
   } finally {
     if (browser) {
-      await browser.close();
+      (await browser as Browser).close();
     }
   }
 }

@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node build/server.js",
     "build": "tsc",
-    "dev": "nodemon --watch src --exec ts-node src/server.ts"
+    "dev": "nodemon --watch src --exec ts-node src/server.ts",
+    "docker": "docker-compose up --build"
   },
   "keywords": [],
   "author": "",

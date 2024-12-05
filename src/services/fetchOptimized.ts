@@ -1,3 +1,4 @@
+import { Browser } from 'puppeteer-core';
 import { getBrowser } from '../config/puppeteerConfig';
 
 export async function fetchDataOptimized(
@@ -111,7 +112,7 @@ export async function fetchDataOptimized(
     return { error: `An error occurred: ${error.message}` };
   } finally {
     if (browser) {
-      await browser.close();
+        (browser as Browser).close();
     }
   }
 }
