@@ -9,8 +9,6 @@
 <p align="center">
   <a href="#features"><strong>Features</strong></a> ·
   <a href="#api-endpoints"><strong>API Endpoints</strong></a> ·
-  <a href="#deploy-your-own"><strong>Deploy Your Own</strong></a> ·
-  <a href="#running-locally"><strong>Running Locally</strong></a> ·
   <a href="#using-docker"><strong>Using Docker</strong></a>
   <a href="#technologies-used"><strong>Technologies Used</strong></a>
 </p>
@@ -31,7 +29,7 @@
 - **Easy to Deploy**
   - Docker support for seamless containerized deployment.
   - Postman workspace for easy API testing.
-## RUNNING LOCALLY WITH DOCKER
+## Using Docker
 **Step 1**: Clone the Repository via the terminal
 ```bash
 git clone https://github.com/vakulenko10/nutrish-case.git .
